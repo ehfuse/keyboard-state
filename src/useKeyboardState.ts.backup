@@ -1,0 +1,636 @@
+/**
+ * useKeyboardState Hook
+ *
+ * 키보드 수정자 키(Modifier Keys)와 키 이벤트를 전역으로 관리합니다.
+ * - CapsLock, Shift, Ctrl, Alt, Meta(Cmd/Win) 등의 상태를 추적
+ * - 전역에서 한 번만 이벤트 리스너를 등록하고 여러 컴포넌트에서 구독 가능
+ * - 키 조합 단축키 등록 및 특정 키 감시 기능 제공
+ */
+
+import { useEffect, useCallback } from "react";
+import { useGlobalFormaState } from "@ehfuse/forma";
+import type {
+    KeyboardState,
+    KeyComboCallback,
+    KeyPressCallback,
+    KeyCombo,
+    UseKeyboardStateReturn,
+    KeyType,
+    KeyComboInput,
+    KeyboardShortcuts,
+    KeyComboOptions,
+} from "./types";
+
+// 타입들을 re-export
+export type {
+    KeyboardState,
+    KeyComboCallback,
+    KeyPressCallback,
+    KeyCombo,
+    UseKeyboardStateReturn,
+    KeyType,
+    KeyComboOrKey,
+    KeyComboInput,
+    KeyboardShortcuts,
+    KeyComboOptions,
+} from "./types";
+export { Keys } from "./types";
+
+// 전역 저장소들 (모든 useKeyboardState 호출이 공유)
+const globalKeyComboCallbacks = new Map<
+    string,
+    {
+        callback: KeyComboCallback;
+        options: Required<KeyComboOptions>;
+    }
+>();
+const globalKeyWatchCallbacks = new Map<string, KeyPressCallback[]>();
+const globalHoldTimers = new Map<string, number>();
+const globalRegisteredShortcuts = new Set<string>();
+let globalFocusStealingKeyTimer: number | null = null;
+let globalKeySequence: string[] = [];
+let globalKeySequenceTimer: number | null = null;
+let globalEventListenersRegistered = false; // 이벤트 리스너 중복 등록 방지
+let globalState: any = null; // forma state 저장 (이벤트 핸들러에서 사용)
+
+/**
+ * 키 이름을 정규화 (브라우저 간 호환성)
+ * 예: "Esc" -> "escape"
+ */
+function normalizeKey(key: string): string {
+    // Space 키는 " " 문자로 오므로 "space"로 변환
+    if (key === " ") {
+        return "space";
+    }
+
+    const normalized = key.toLowerCase();
+    // 키 별칭 매핑
+    const aliases: Record<string, string> = {
+        esc: "escape",
+        cmd: "meta",
+        command: "meta",
+        win: "meta",
+        windows: "meta",
+        ctrl: "control",
+    };
+    return aliases[normalized] || normalized;
+}
+
+/**
+ * 다양한 형식의 키 조합을 KeyCombo 객체로 변환
+ * @param input - 문자열('ctrl+s'), 배열(['Ctrl', 'S']), 객체({ ctrl: true, key: 's' })
+ */
+function parseKeyCombo(input: KeyComboInput): KeyCombo {
+    // 1. 이미 KeyCombo 객체면 그대로 반환
+    if (typeof input === "object" && !Array.isArray(input) && "key" in input) {
+        return input;
+    }
+
+    // 2. 배열인 경우: ['Ctrl', 'Shift', 'S']
+    if (Array.isArray(input)) {
+        const modifiers = {
+            ctrl: false,
+            shift: false,
+            alt: false,
+            meta: false,
+        };
+        let key: KeyType = "";
+
+        input.forEach((k) => {
+            const normalized = normalizeKey(String(k));
+            if (normalized === "control") modifiers.ctrl = true;
+            else if (normalized === "shift") modifiers.shift = true;
+            else if (normalized === "alt") modifiers.alt = true;
+            else if (normalized === "meta") modifiers.meta = true;
+            else key = k as KeyType;
+        });
+
+        return { ...modifiers, key };
+    }
+
+    // 3. 문자열인 경우: 'ctrl+shift+s' 또는 단일 키 'escape'
+    const str = String(input);
+
+    if (str.includes("+")) {
+        // 조합 키: 'ctrl+s'
+        const parts = str.split("+").map((p) => p.trim());
+        const modifiers = {
+            ctrl: false,
+            shift: false,
+            alt: false,
+            meta: false,
+        };
+        let key: KeyType = "";
+
+        parts.forEach((part) => {
+            const normalized = normalizeKey(part);
+            if (normalized === "control") modifiers.ctrl = true;
+            else if (normalized === "shift") modifiers.shift = true;
+            else if (normalized === "alt") modifiers.alt = true;
+            else if (normalized === "meta") modifiers.meta = true;
+            else key = part as KeyType;
+        });
+
+        return { ...modifiers, key };
+    }
+
+    // 4. 단일 키
+    return { key: str as KeyType };
+}
+
+/**
+ * 키 조합을 문자열 키로 변환
+ * 예: { ctrl: true, key: 's' } -> 'ctrl+s'
+ */
+function createComboKey(combo: KeyCombo): string {
+    const normalizedKey = normalizeKey(combo.key);
+    const parts: string[] = [];
+
+    // 키가 수정자 키 자체인 경우, 해당 수정자는 제외
+    // (예: Shift 키를 누르면 event.shiftKey도 true가 되므로)
+    if (combo.ctrl && normalizedKey !== "control") parts.push("ctrl");
+    if (combo.shift && normalizedKey !== "shift") parts.push("shift");
+    if (combo.alt && normalizedKey !== "alt") parts.push("alt");
+    if (combo.meta && normalizedKey !== "meta") parts.push("meta");
+
+    parts.push(normalizedKey);
+    return parts.join("+");
+}
+
+const defaultKeyboardState: KeyboardState = {
+    capsLock: false,
+    shift: false,
+    ctrl: false,
+    alt: false,
+    meta: false,
+    pressedKeys: new Set<string>(),
+    lastPressedKey: null,
+};
+
+/**
+ * 전역 키 감시 등록 함수
+ */
+function globalWatchKey(
+    combo: KeyComboInput,
+    callback: KeyComboCallback,
+    options?: KeyComboOptions
+): () => void {
+    const keyCombo = parseKeyCombo(combo);
+    const comboKey = createComboKey(keyCombo);
+
+    // 옵션 기본값 설정
+    const finalOptions: Required<KeyComboOptions> = {
+        preventDefault: options?.preventDefault ?? true,
+        enabled: options?.enabled ?? true,
+        classes: options?.classes ?? [],
+        holdDuration: options?.holdDuration ?? 0,
+        onHold: options?.onHold ?? (() => {}),
+        onRelease: options?.onRelease ?? (() => {}),
+    };
+
+    // 단축키 충돌 감지
+    if (globalRegisteredShortcuts.has(comboKey)) {
+        console.warn(
+            `⚠️ Duplicate keyboard shortcut detected: "${comboKey}". This will override the previous registration.`
+        );
+    }
+    globalRegisteredShortcuts.add(comboKey);
+
+    globalKeyComboCallbacks.set(comboKey, {
+        callback,
+        options: finalOptions,
+    });
+
+    // 정리 함수 반환
+    return () => {
+        globalKeyComboCallbacks.delete(comboKey);
+        globalRegisteredShortcuts.delete(comboKey);
+        // 홀드 타이머도 정리
+        const timerId = globalHoldTimers.get(comboKey);
+        if (timerId) {
+            clearTimeout(timerId);
+            globalHoldTimers.delete(comboKey);
+        }
+    };
+}
+
+/**
+ * 전역 키보드 수정자 키 상태 관리 훅
+ *
+ * @overload
+ * @returns 키보드 상태와 메서드들
+ *
+ * @overload
+ * @param combo - 감시할 키 조합 (문자열, 배열, 객체)
+ * @param callback - 키가 눌렸을 때 실행할 콜백
+ * @param options - 옵션 (preventDefault, enabled, classes)
+ *
+ * @overload
+ * @param shortcuts - 여러 키보드 단축키를 객체로 정의
+ */
+export function useKeyboardState(): UseKeyboardStateReturn;
+export function useKeyboardState(
+    combo: KeyComboInput,
+    callback: KeyComboCallback,
+    options?: KeyComboOptions
+): void;
+export function useKeyboardState(shortcuts: KeyboardShortcuts): void;
+export function useKeyboardState(
+    comboOrShortcuts?: KeyComboInput | KeyboardShortcuts,
+    callback?: KeyComboCallback,
+    options?: KeyComboOptions
+): UseKeyboardStateReturn | void {
+    const state = useGlobalFormaState<KeyboardState>({
+        stateId: "keyboardState",
+        initialValues: defaultKeyboardState,
+    });
+
+    // 첫 호출 시 전역 state 저장 (이벤트 핸들러에서 사용)
+    if (!globalState) {
+        globalState = state;
+    }
+
+    // 개별 값 구독
+    const capsLock = state.useValue("capsLock");
+    const shift = state.useValue("shift");
+    const ctrl = state.useValue("ctrl");
+    const alt = state.useValue("alt");
+    const meta = state.useValue("meta");
+    const pressedKeys = state.useValue("pressedKeys");
+    const lastPressedKey = state.useValue("lastPressedKey");
+
+    // 전역 이벤트 리스너 등록 (한 번만)
+    useEffect(() => {
+        // 이미 등록되어 있으면 스킵
+        if (globalEventListenersRegistered) {
+            return;
+        }
+        globalEventListenersRegistered = true;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event && typeof event.getModifierState === "function") {
+                const key = normalizeKey(event.key);
+                const currentPressedKeys = new Set<string>(
+                    globalState.getValue("pressedKeys")
+                );
+                currentPressedKeys.add(key);
+
+                // Alt 또는 Meta 키가 단독으로 눌렸을 때 (포커스를 빼앗을 수 있는 키)
+                // 100ms 후에도 keyup이 발생하지 않으면 상태 리셋
+                if (
+                    (key === "alt" || key === "meta") &&
+                    !event.ctrlKey &&
+                    !event.shiftKey
+                ) {
+                    // 기존 타이머 클리어
+                    if (globalFocusStealingKeyTimer) {
+                        clearTimeout(globalFocusStealingKeyTimer);
+                    }
+
+                    // 새 타이머 설정
+                    globalFocusStealingKeyTimer = window.setTimeout(() => {
+                        // keyup이 발생하지 않았다면 (포커스를 잃었다면) 상태 리셋
+                        globalState.setValues({
+                            shift: false,
+                            ctrl: false,
+                            alt: false,
+                            meta: false,
+                            pressedKeys: new Set<string>(),
+                        });
+                    }, 100);
+                }
+
+                // 모든 수정자 키 상태를 한 번에 업데이트
+                globalState.setValues({
+                    capsLock: event.getModifierState("CapsLock"),
+                    shift: event.shiftKey,
+                    ctrl: event.ctrlKey,
+                    alt: event.altKey,
+                    meta: event.metaKey,
+                    pressedKeys: currentPressedKeys,
+                    lastPressedKey: key,
+                });
+
+                // 특정 키 감시 콜백 실행
+                const watchCallbacks = globalKeyWatchCallbacks.get(key);
+                if (watchCallbacks) {
+                    // Backspace, Tab 등 기본 동작이 있는 키는 preventDefault 호출
+                    if (key === "backspace" || key === "tab") {
+                        event.preventDefault();
+                    }
+                    watchCallbacks.forEach((callback) => callback(key));
+                }
+
+                // 키 조합 감지
+                const comboKey = createComboKey({
+                    ctrl: event.ctrlKey,
+                    shift: event.shiftKey,
+                    alt: event.altKey,
+                    meta: event.metaKey,
+                    key,
+                });
+                const comboData = globalKeyComboCallbacks.get(comboKey);
+                if (comboData) {
+                    const { callback, options } = comboData;
+
+                    // enabled 체크
+                    if (!options.enabled) {
+                        return;
+                    }
+
+                    // classes 스코프 체크
+                    if (options.classes.length > 0) {
+                        const target = event.target as HTMLElement;
+                        const hasMatchingClass = options.classes.some(
+                            (className) => {
+                                // className이 .으로 시작하면 제거
+                                const cleanClass = className.startsWith(".")
+                                    ? className.slice(1)
+                                    : className;
+                                return (
+                                    target.closest(`.${cleanClass}`) !== null
+                                );
+                            }
+                        );
+                        if (!hasMatchingClass) {
+                            return;
+                        }
+                    }
+
+                    // preventDefault 처리
+                    if (options.preventDefault) {
+                        event.preventDefault();
+                    }
+
+                    // 키 홀드 감지 설정
+                    if (options.holdDuration > 0) {
+                        // 반복 입력(키를 계속 누르고 있을 때)은 무시하고, 첫 번째 keydown만 타이머 설정
+                        if (!event.repeat && !globalHoldTimers.has(comboKey)) {
+                            const timerId = window.setTimeout(() => {
+                                if (options.onHold) {
+                                    options.onHold();
+                                }
+                                globalHoldTimers.delete(comboKey);
+                            }, options.holdDuration);
+                            globalHoldTimers.set(comboKey, timerId);
+                        }
+                    } else {
+                        // 홀드 설정이 없으면 즉시 콜백 실행 (반복 입력 무시)
+                        if (!event.repeat) {
+                            callback();
+                        }
+                    }
+                }
+
+                // 연속 키 입력 처리 (Vim 스타일: 'g i', 'g h')
+                // 수정자 키 없이 단일 키만 눌렸을 때만 시퀀스에 추가
+                if (
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey &&
+                    !event.metaKey &&
+                    key.length === 1 // 단일 문자만
+                ) {
+                    // 기존 타이머 클리어
+                    if (globalKeySequenceTimer) {
+                        clearTimeout(globalKeySequenceTimer);
+                    }
+
+                    // 시퀀스에 추가
+                    globalKeySequence.push(key);
+
+                    // 시퀀스 문자열 생성
+                    const sequence = globalKeySequence.join(" ");
+
+                    // 시퀀스 매칭 확인
+                    const sequenceData = globalKeyComboCallbacks.get(sequence);
+                    if (sequenceData) {
+                        const { callback, options } = sequenceData;
+
+                        // enabled 체크
+                        if (options.enabled) {
+                            // classes 스코프 체크
+                            let shouldExecute = true;
+                            if (options.classes.length > 0) {
+                                const target = event.target as HTMLElement;
+                                const hasMatchingClass = options.classes.some(
+                                    (className) => {
+                                        const cleanClass = className.startsWith(
+                                            "."
+                                        )
+                                            ? className.slice(1)
+                                            : className;
+                                        return (
+                                            target.closest(`.${cleanClass}`) !==
+                                            null
+                                        );
+                                    }
+                                );
+                                shouldExecute = hasMatchingClass;
+                            }
+
+                            if (shouldExecute) {
+                                // preventDefault 처리
+                                if (options.preventDefault) {
+                                    event.preventDefault();
+                                }
+
+                                callback();
+                                // 시퀀스 초기화
+                                globalKeySequence = [];
+                                return;
+                            }
+                        }
+                    }
+
+                    // 1초 후 시퀀스 초기화
+                    globalKeySequenceTimer = window.setTimeout(() => {
+                        globalKeySequence = [];
+                    }, 1000);
+                }
+            }
+        };
+
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event && typeof event.getModifierState === "function") {
+                const key = normalizeKey(event.key);
+                const currentPressedKeys = new Set<string>(
+                    globalState.getValue("pressedKeys")
+                );
+                currentPressedKeys.delete(key);
+
+                // Alt/Meta 키의 keyup을 받았다면 타이머 클리어 (정상적으로 keyup 발생)
+                if (
+                    (key === "alt" || key === "meta") &&
+                    globalFocusStealingKeyTimer
+                ) {
+                    clearTimeout(globalFocusStealingKeyTimer);
+                    globalFocusStealingKeyTimer = null;
+                }
+
+                globalState.setValues({
+                    capsLock: event.getModifierState("CapsLock"),
+                    shift: event.shiftKey,
+                    ctrl: event.ctrlKey,
+                    alt: event.altKey,
+                    meta: event.metaKey,
+                    pressedKeys: currentPressedKeys,
+                });
+
+                // 키 릴리즈 이벤트 처리 및 홀드 타이머 정리
+                const comboKey = createComboKey({
+                    ctrl: event.ctrlKey,
+                    shift: event.shiftKey,
+                    alt: event.altKey,
+                    meta: event.metaKey,
+                    key,
+                });
+
+                // 홀드 타이머가 있으면 정리 (키를 충분히 오래 누르지 않음)
+                const timerId = globalHoldTimers.get(comboKey);
+                if (timerId) {
+                    clearTimeout(timerId);
+                    globalHoldTimers.delete(comboKey);
+                }
+
+                // onRelease 콜백 실행
+                const comboData = globalKeyComboCallbacks.get(comboKey);
+                if (comboData && comboData.options.onRelease) {
+                    comboData.options.onRelease();
+                }
+            }
+        };
+
+        // keydown, keyup 이벤트에 리스너 등록
+        document.addEventListener("keydown", handleKeyDown);
+        document.addEventListener("keyup", handleKeyUp);
+
+        // 포커스 잃을 때 또는 돌아올 때 모든 키 상태 리셋
+        const resetAllKeys = () => {
+            globalState.setValues({
+                shift: false,
+                ctrl: false,
+                alt: false,
+                meta: false,
+                pressedKeys: new Set<string>(),
+            });
+        };
+
+        // 윈도우 포커스 잃을 때
+        const handleBlur = () => {
+            resetAllKeys();
+        };
+
+        // 윈도우 포커스 돌아올 때 (meta 키 등이 눌린 상태로 남아있을 수 있음)
+        const handleFocus = () => {
+            resetAllKeys();
+        };
+
+        // 페이지 visibility 변경 시 (탭 전환 등)
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                resetAllKeys();
+            }
+        };
+
+        window.addEventListener("blur", handleBlur);
+        window.addEventListener("focus", handleFocus);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        // cleanup: 전역 이벤트 리스너는 제거하지 않음 (다른 컴포넌트가 사용 중일 수 있음)
+        // 타이머만 정리
+        return () => {
+            // 타이머 정리
+            if (globalFocusStealingKeyTimer) {
+                clearTimeout(globalFocusStealingKeyTimer);
+            }
+            if (globalKeySequenceTimer) {
+                clearTimeout(globalKeySequenceTimer);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // watchKey는 전역 함수 사용
+    const watchKey = globalWatchKey;
+
+    /**
+     * 키가 현재 눌려있는지 확인
+     * @param key - 확인할 키 또는 키 배열 (배열인 경우 모든 키가 눌려있어야 함)
+     * @returns 키가 눌려있으면 true
+     */
+    const isKeyPressed = useCallback(
+        (key: KeyType | KeyType[]) => {
+            if (Array.isArray(key)) {
+                // 배열인 경우: 모든 키가 눌려있는지 확인 (AND 조건)
+                return key.every((k) =>
+                    pressedKeys.has(normalizeKey(String(k)))
+                );
+            }
+            // 단일 키인 경우
+            return pressedKeys.has(normalizeKey(String(key)));
+        },
+        [pressedKeys]
+    );
+
+    // 오버로딩: 단축키 바로 등록
+    useEffect(() => {
+        if (!comboOrShortcuts) return;
+
+        const cleanups: (() => void)[] = [];
+
+        // 1. 객체 형태: { 'ctrl+s': callback, 'escape': callback }
+        if (
+            typeof comboOrShortcuts === "object" &&
+            !Array.isArray(comboOrShortcuts) &&
+            !("key" in comboOrShortcuts)
+        ) {
+            const shortcuts = comboOrShortcuts as KeyboardShortcuts;
+            (Object.keys(shortcuts) as string[]).forEach((combo: string) => {
+                cleanups.push(watchKey(combo, shortcuts[combo]));
+            });
+        }
+        // 2. 단일 키 조합: 'ctrl+s' 또는 ['Ctrl', 'S']
+        else if (callback) {
+            cleanups.push(
+                watchKey(comboOrShortcuts as KeyComboInput, callback, options)
+            );
+        }
+
+        return () => {
+            cleanups.forEach((cleanup) => cleanup());
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [comboOrShortcuts]);
+
+    // 인자가 있으면 void 반환 (단축 사용)
+    if (comboOrShortcuts !== undefined) {
+        return;
+    }
+
+    // 인자 없으면 전체 객체 반환 (기존 방식)
+    return {
+        // 기본 상태
+        capsLock,
+        shift,
+        ctrl,
+        alt,
+        meta,
+        pressedKeys,
+        lastPressedKey,
+
+        // 편의 메서드들
+        isShiftPressed: shift,
+        isCtrlPressed: ctrl,
+        isAltPressed: alt,
+        isMetaPressed: meta,
+        isCapsLockOn: capsLock,
+
+        // 조합 체크 헬퍼
+        isCtrlOrMeta: ctrl || meta, // Ctrl(Win/Linux) or Cmd(Mac)
+
+        // 키 조합 및 감시 메서드
+        watchKey,
+        isKeyPressed,
+    };
+}

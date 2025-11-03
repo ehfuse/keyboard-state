@@ -1,0 +1,53 @@
+{
+    "name": "@ehfuse/keyboard-state",
+    "version": "1.0.0",
+    "description": "React hook for managing global keyboard state including modifier keys and key combinations",
+    "main": "dist/index.js",
+    "module": "dist/index.esm.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "build": "node build.js",
+        "dev": "node build.js --watch",
+        "prepublishOnly": "npm run build",
+        "example": "cd example && npm run dev"
+    },
+    "keywords": [
+        "react",
+        "hook",
+        "keyboard",
+        "key",
+        "modifier",
+        "shortcuts",
+        "hotkeys",
+        "global-state",
+        "typescript"
+    ],
+    "author": "KIM YOUNG JIN(ehfuse@gmail.com)",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ehfuse/keyboard-state.git"
+    },
+    "bugs": {
+        "url": "https://github.com/ehfuse/keyboard-state/issues"
+    },
+    "homepage": "https://github.com/ehfuse/keyboard-state#readme",
+    "peerDependencies": {
+        "@ehfuse/forma": "^2.1.2",
+        "react": ">=16.8.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.0.0",
+        "esbuild": "^0.19.0",
+        "typescript": "^5.0.0"
+    },
+    "engines": {
+        "node": ">=14.0.0"
+    },
+    "sideEffects": false
+}

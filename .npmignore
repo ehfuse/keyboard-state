@@ -1,0 +1,59 @@
+# Source files (only dist should be published)
+src/
+example/
+build.js
+tsconfig.json
+
+# Development files
+.gitignore
+.eslintrc*
+.prettierrc*
+*.config.js
+*.config.ts
+
+# Documentation (except README.md)
+docs/
+*.md
+!README.md
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+coverage/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Development dependencies are already excluded by default
+node_modules/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env*
+
+# Build cache
+.cache/
+.parcel-cache/
+
+# Temporary files
+tmp/
+temp/

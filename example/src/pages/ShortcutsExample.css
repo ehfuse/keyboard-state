@@ -1,0 +1,139 @@
+.shortcuts-example {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.shortcuts-example h2 {
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.shortcuts-example p {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.shortcut-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.shortcut-item:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.shortcut-item.active {
+    background: #d4edda;
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+}
+
+.shortcut-item.active kbd {
+    background: #28a745;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.shortcut-item kbd {
+    background: #343a40;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: monospace;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.shortcut-item span {
+    margin-left: auto;
+    color: #495057;
+    font-weight: 500;
+}
+
+.messages-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.messages-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.messages-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.clear-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clear-btn:hover {
+    background: #c82333;
+}
+
+.messages-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+}
+
+.no-messages {
+    padding: 2rem;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.message-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f3f4;
+    animation: slideIn 0.3s ease;
+}
+
+.message-item:last-child {
+    border-bottom: none;
+}
+
+.message-item:nth-child(odd) {
+    background: #f8f9fa;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

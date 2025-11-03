@@ -23,7 +23,7 @@ export type {
     KeyComboOrKey,
     RecordedKeyEvent,
     RecordedMacro,
-    UseKeyboardRecordingReturn,
+    KeyboardRecording,
 } from "./types";
 
 // Enum exports

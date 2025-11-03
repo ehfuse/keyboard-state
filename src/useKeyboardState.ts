@@ -14,14 +14,11 @@ import type {
     KeyboardShortcuts,
     KeyboardShortcutItem,
 } from "./types";
-import { parseKeyCombo, createComboKey, normalizeKey } from "./utils";
+import { normalizeKey } from "./utils";
 import {
     globalEventListenersRegistered,
-    globalRegisteredShortcuts,
-    globalKeyComboCallbacks,
     setGlobalEventListenersRegistered,
     globalWatchKey,
-    globalState,
 } from "./globalState";
 import {
     createKeyDownHandler,

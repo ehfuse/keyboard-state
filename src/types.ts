@@ -193,7 +193,7 @@ export interface RecordedMacro {
 /**
  * useKeyboardRecording 훅의 반환 타입
  */
-export interface UseKeyboardRecordingReturn {
+export interface KeyboardRecording {
     isRecording: boolean;
     recordedMacro: RecordedMacro | null;
     startRecording: () => void;

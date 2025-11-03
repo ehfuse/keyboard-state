@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from "react";
-import {
-    RecordedKeyEvent,
+import type {
     RecordedMacro,
-    UseKeyboardRecordingReturn,
+    RecordedKeyEvent,
+    KeyboardRecording,
 } from "./types";
 
 /**
@@ -24,7 +24,7 @@ import {
  * }
  * ```
  */
-export function useKeyboardRecording(): UseKeyboardRecordingReturn {
+export function useKeyboardRecording(): KeyboardRecording {
     const [isRecording, setIsRecording] = useState(false);
     const [recordedMacro, setRecordedMacro] = useState<RecordedMacro | null>(
         null

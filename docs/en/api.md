@@ -188,6 +188,14 @@ Hook for recording and playing back keyboard input as macros.
 #### Usage
 
 ```tsx
+import {
+    useKeyboardRecording,
+    type KeyboardRecording,
+} from "@ehfuse/keyboard-state";
+
+const recording: KeyboardRecording = useKeyboardRecording();
+
+// Or with destructuring
 const {
     isRecording,
     recordedMacro,

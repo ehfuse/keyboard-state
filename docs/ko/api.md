@@ -188,6 +188,14 @@ function HoldExample() {
 #### 사용법
 
 ```tsx
+import {
+    useKeyboardRecording,
+    type KeyboardRecording,
+} from "@ehfuse/keyboard-state";
+
+const recording: KeyboardRecording = useKeyboardRecording();
+
+// 또는 구조분해
 const {
     isRecording,
     recordedMacro,

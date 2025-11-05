@@ -246,17 +246,17 @@ function VimNavigation() {
 ### 특정 키 눌림 감지
 
 ```tsx
-import { useKeyboardState, Keys } from "@ehfuse/keyboard-state";
+import { useKeyboardState } from "@ehfuse/keyboard-state";
 
 function KeyDetector() {
     const keyboard = useKeyboardState();
 
     const watchedKeys = [
-        { name: "ESC", key: Keys.Escape },
-        { name: "Enter", key: Keys.Enter },
-        { name: "Space", key: Keys.Space },
-        { name: "↑", key: Keys.ArrowUp },
-        { name: "↓", key: Keys.ArrowDown },
+        { name: "ESC", key: "Escape" },
+        { name: "Enter", key: "Enter" },
+        { name: "Space", key: "Space" },
+        { name: "↑", key: "ArrowUp" },
+        { name: "↓", key: "ArrowDown" },
     ];
 
     return (
@@ -292,7 +292,7 @@ function KeyDetector() {
 ### 키 이벤트 감시
 
 ```tsx
-import { useKeyboardState, Keys } from "@ehfuse/keyboard-state";
+import { useKeyboardState } from "@ehfuse/keyboard-state";
 import { useState } from "react";
 
 function KeyEventLogger() {
@@ -304,9 +304,14 @@ function KeyEventLogger() {
     };
 
     // 여러 키를 감시
-    keyboard.watchKey(Keys.Escape, () => addEvent("ESC 눌림"));
-    keyboard.watchKey(Keys.Enter, () => addEvent("Enter 눌림"));
-    keyboard.watchKey(Keys.Space, () => addEvent("Space 눌림"));
+    keyboard.watchKey("Escape", () => addEvent("ESC 눌림"));
+    keyboard.watchKey("Enter", () => addEvent("Enter 눌림"));
+    keyboard.watchKey("Space", () => addEvent("Space 눌림"));
+
+    // 또는 useKeyboardState()를 직접 사용할 수도 있습니다:
+    // useKeyboardState("Escape", () => addEvent("ESC 눌림"));
+    // useKeyboardState("Enter", () => addEvent("Enter 눌림"));
+    // useKeyboardState("Space", () => addEvent("Space 눌림"));
 
     return (
         <div>
@@ -329,7 +334,7 @@ function KeyEventLogger() {
 ### 키 홀드 감지
 
 ```tsx
-import { useKeyboardState, Keys } from "@ehfuse/keyboard-state";
+import { useKeyboardState } from "@ehfuse/keyboard-state";
 import { useState } from "react";
 
 function HoldDetector() {
@@ -343,14 +348,14 @@ function HoldDetector() {
     };
 
     // Space - 1초 홀드
-    useKeyboardState(Keys.Space, () => {}, {
+    useKeyboardState("Space", () => {}, {
         holdDuration: 1000,
         onHold: () => addEvent("🔥 Space 1초 홀드!"),
         onRelease: () => addEvent("↑ Space 릴리즈"),
     });
 
     // Enter - 2초 홀드
-    useKeyboardState(Keys.Enter, () => {}, {
+    useKeyboardState("Enter", () => {}, {
         holdDuration: 2000,
         onHold: () => addEvent("🔥 Enter 2초 홀드!"),
         onRelease: () => addEvent("↑ Enter 릴리즈"),

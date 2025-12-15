@@ -1,6 +1,6 @@
 {
     "name": "@ehfuse/keyboard-state",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "React hook for managing global keyboard state including modifier keys and key combinations",
     "main": "dist/index.js",
     "module": "dist/index.esm.js",

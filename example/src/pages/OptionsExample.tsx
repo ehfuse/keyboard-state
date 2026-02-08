@@ -9,25 +9,29 @@ export default function OptionsExample() {
         setLogs((prev) =>
             [`${new Date().toLocaleTimeString()}: ${message}`, ...prev].slice(
                 0,
-                10
-            )
+                10,
+            ),
         );
     };
 
-    // 1. preventDefault 테스트 (기본값 true)
-    useKeyboardState("ctrl+s", () => {
-        addLog("Ctrl+S pressed (preventDefault: default/true)");
-    });
+    // 1. preventDefault 테스트 (명시적으로 true)
+    useKeyboardState(
+        "ctrl+s",
+        () => {
+            addLog("Ctrl+S pressed (preventDefault: true)");
+        },
+        { preventDefault: true },
+    );
 
     // 2. preventDefault: false 테스트
     useKeyboardState(
         "ctrl+k",
         () => {
             addLog(
-                "Ctrl+K pressed (preventDefault: false) - 브라우저 검색창이 열릴 수 있음"
+                "Ctrl+K pressed (preventDefault: false) - 브라우저 검색창이 열릴 수 있음",
             );
         },
-        { preventDefault: false }
+        { preventDefault: false },
     );
 
     // 3. enabled 옵션 테스트 (동적으로 on/off)
@@ -36,24 +40,28 @@ export default function OptionsExample() {
         () => {
             addLog("Ctrl+D pressed (enabled: dynamic)");
         },
-        { enabled }
+        { enabled },
     );
 
     // 4. classes 스코프 테스트
     useKeyboardState(
         "ctrl+e",
         () => {
-            addLog("Ctrl+E pressed inside editor area");
+            addLog("Ctrl+E pressed inside editor area (including input)");
         },
-        { classes: ["editor-area"] }
+        {
+            classes: ["editor-area"],
+            allowInEditable: true,
+            preventDefault: true,
+        },
     );
 
     useKeyboardState(
         "ctrl+m",
         () => {
-            addLog("Ctrl+M pressed inside modal");
+            addLog("Ctrl+M pressed inside modal (including input)");
         },
-        { classes: ["modal-area"] }
+        { classes: ["modal-area"], allowInEditable: true },
     );
 
     // 5. 여러 옵션 조합
@@ -61,10 +69,10 @@ export default function OptionsExample() {
         "ctrl+shift+x",
         () => {
             addLog(
-                "Ctrl+Shift+X pressed (preventDefault: false, enabled: dynamic)"
+                "Ctrl+Shift+X pressed (preventDefault: false, enabled: dynamic)",
             );
         },
-        { preventDefault: false, enabled }
+        { preventDefault: false, enabled },
     );
 
     return (
@@ -101,7 +109,7 @@ export default function OptionsExample() {
                     }}
                 >
                     <h3>Editor Area (.editor-area)</h3>
-                    <p>Ctrl+E only works here</p>
+                    <p>Ctrl+E works here (input 포함)</p>
                     <input
                         type="text"
                         placeholder="Focus here and press Ctrl+E"
@@ -120,7 +128,7 @@ export default function OptionsExample() {
                     }}
                 >
                     <h3>Modal Area (.modal-area)</h3>
-                    <p>Ctrl+M only works here</p>
+                    <p>Ctrl+M works here (input 포함)</p>
                     <input
                         type="text"
                         placeholder="Focus here and press Ctrl+M"
@@ -133,8 +141,7 @@ export default function OptionsExample() {
                 <h2>Shortcuts Reference</h2>
                 <ul style={{ lineHeight: "1.8" }}>
                     <li>
-                        <code>Ctrl+S</code> - Default options (preventDefault:
-                        true)
+                        <code>Ctrl+S</code> - preventDefault: true
                     </li>
                     <li>
                         <code>Ctrl+K</code> - preventDefault: false (브라우저
@@ -144,12 +151,13 @@ export default function OptionsExample() {
                         <code>Ctrl+D</code> - enabled 옵션 (체크박스로 제어)
                     </li>
                     <li>
-                        <code>Ctrl+E</code> - classes: ['editor-area'] (파란
-                        영역에서만)
+                        <code>Ctrl+E</code> - classes: ['editor-area'] +
+                        allowInEditable: true + preventDefault: true (파란 영역
+                        input 포함)
                     </li>
                     <li>
-                        <code>Ctrl+M</code> - classes: ['modal-area'] (보라
-                        영역에서만)
+                        <code>Ctrl+M</code> - classes: ['modal-area'] +
+                        allowInEditable: true (보라 영역 input 포함)
                     </li>
                     <li>
                         <code>Ctrl+Shift+X</code> - preventDefault: false +

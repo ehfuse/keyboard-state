@@ -88,9 +88,15 @@ export interface KeyState {
 export interface KeyComboOptions {
     /**
      * 브라우저 기본 동작 방지 여부
-     * @default true
+     * @default false
      */
     preventDefault?: boolean;
+
+    /**
+     * 입력 요소에서도 단축키를 허용할지 여부
+     * @default false
+     */
+    allowInEditable?: boolean;
 
     /**
      * 단축키 활성화 여부 (동적으로 제어)
@@ -222,7 +228,7 @@ export interface KeyboardState {
     watchKey: (
         combo: KeyComboInput,
         callback: KeyComboCallback,
-        options?: KeyComboOptions
+        options?: KeyComboOptions,
     ) => () => void;
     isKeyPressed: (key: KeyType | KeyType[]) => boolean;
 }

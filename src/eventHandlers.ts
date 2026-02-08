@@ -3,7 +3,6 @@
  * 키보드 이벤트 핸들러 로직
  */
 
-import type { KeyState } from "./types";
 import { normalizeKey, createComboKey } from "./utils";
 import {
     globalKeyComboCallbacks,
@@ -12,11 +11,40 @@ import {
     globalFocusStealingKeyTimer,
     globalKeySequence,
     globalKeySequenceTimer,
-    globalState,
     setGlobalFocusStealingKeyTimer,
     setGlobalKeySequence,
     setGlobalKeySequenceTimer,
+    addPressedKey,
+    removePressedKey,
+    clearPressedKeys,
+    setInternalModifiers,
+    setInternalModifierKeys,
+    setInternalLastPressedKey,
+    scheduleStateFlush,
 } from "./globalState";
+
+function isEditableTarget(target: EventTarget | null): boolean {
+    if (!target || !(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    if (target.tagName === "TEXTAREA") return true;
+    if (target.tagName === "INPUT") {
+        const type = (target.getAttribute("type") || "text").toLowerCase();
+        const blocked = new Set([
+            "button",
+            "checkbox",
+            "color",
+            "file",
+            "hidden",
+            "image",
+            "radio",
+            "range",
+            "reset",
+            "submit",
+        ]);
+        return !blocked.has(type);
+    }
+    return false;
+}
 
 /**
  * keydown 이벤트 핸들러
@@ -24,13 +52,10 @@ import {
 export function createKeyDownHandler() {
     return (event: KeyboardEvent) => {
         if (!event || typeof event.getModifierState !== "function") return;
-        if (!globalState) return;
 
         const key = normalizeKey(event.key);
-        const currentPressedKeys = new Set<string>(
-            globalState.getValue("pressedKeys")
-        );
-        currentPressedKeys.add(key);
+        addPressedKey(key);
+        const isEditable = isEditableTarget(event.target);
 
         // Alt 또는 Meta 키가 단독으로 눌렸을 때 (포커스를 빼앗을 수 있는 키)
         // 100ms 후에도 keyup이 발생하지 않으면 상태 리셋
@@ -44,49 +69,56 @@ export function createKeyDownHandler() {
             }
 
             const timerId = window.setTimeout(() => {
-                globalState.setValues({
+                setInternalModifierKeys({
                     shift: false,
                     ctrl: false,
                     alt: false,
                     meta: false,
-                    pressedKeys: new Set<string>(),
                 });
+                clearPressedKeys();
+                scheduleStateFlush();
             }, 100);
             setGlobalFocusStealingKeyTimer(timerId);
         }
 
         // 모든 수정자 키 상태를 한 번에 업데이트
-        globalState.setValues({
+        setInternalModifiers({
             capsLock: event.getModifierState("CapsLock"),
             shift: event.shiftKey,
             ctrl: event.ctrlKey,
             alt: event.altKey,
             meta: event.metaKey,
-            pressedKeys: currentPressedKeys,
-            lastPressedKey: key,
         });
+        setInternalLastPressedKey(key);
+        scheduleStateFlush();
 
         // 특정 키 감시 콜백 실행
-        const watchCallbacks = globalKeyWatchCallbacks.get(key);
-        if (watchCallbacks) {
-            if (key === "backspace" || key === "tab") {
-                event.preventDefault();
+        if (!isEditable) {
+            const watchCallbacks = globalKeyWatchCallbacks.get(key);
+            if (watchCallbacks) {
+                if (key === "backspace" || key === "tab") {
+                    event.preventDefault();
+                }
+                watchCallbacks.forEach((callback) => callback(key));
             }
-            watchCallbacks.forEach((callback) => callback(key));
         }
 
         // 키 조합 감지 및 처리
-        handleKeyCombo(event, key);
+        handleKeyCombo(event, key, isEditable);
 
         // 연속 키 입력 처리 (Vim 스타일: 'g i', 'g h')
-        handleKeySequence(event, key);
+        handleKeySequence(event, key, isEditable);
     };
 }
 
 /**
  * 키 조합 처리
  */
-function handleKeyCombo(event: KeyboardEvent, key: string) {
+function handleKeyCombo(
+    event: KeyboardEvent,
+    key: string,
+    isEditable: boolean,
+) {
     const comboKey = createComboKey({
         ctrl: event.ctrlKey,
         shift: event.shiftKey,
@@ -102,6 +134,8 @@ function handleKeyCombo(event: KeyboardEvent, key: string) {
 
     // enabled 체크
     if (!options.enabled) return;
+
+    if (isEditable && !options.allowInEditable) return;
 
     // classes 스코프 체크
     if (options.classes.length > 0) {
@@ -142,7 +176,11 @@ function handleKeyCombo(event: KeyboardEvent, key: string) {
 /**
  * 키 시퀀스 처리 (Vim 스타일)
  */
-function handleKeySequence(event: KeyboardEvent, key: string) {
+function handleKeySequence(
+    event: KeyboardEvent,
+    key: string,
+    isEditable: boolean,
+) {
     // 수정자 키 없이 단일 키만 눌렸을 때만 시퀀스에 추가
     if (
         event.ctrlKey ||
@@ -172,6 +210,8 @@ function handleKeySequence(event: KeyboardEvent, key: string) {
         const { callback, options } = sequenceData;
 
         if (!options.enabled) return;
+
+        if (isEditable && !options.allowInEditable) return;
 
         // classes 스코프 체크
         let shouldExecute = true;
@@ -209,13 +249,10 @@ function handleKeySequence(event: KeyboardEvent, key: string) {
 export function createKeyUpHandler() {
     return (event: KeyboardEvent) => {
         if (!event || typeof event.getModifierState !== "function") return;
-        if (!globalState) return;
 
         const key = normalizeKey(event.key);
-        const currentPressedKeys = new Set<string>(
-            globalState.getValue("pressedKeys")
-        );
-        currentPressedKeys.delete(key);
+        removePressedKey(key);
+        const isEditable = isEditableTarget(event.target);
 
         // Alt/Meta 키의 keyup을 받았다면 타이머 클리어
         if ((key === "alt" || key === "meta") && globalFocusStealingKeyTimer) {
@@ -223,14 +260,14 @@ export function createKeyUpHandler() {
             setGlobalFocusStealingKeyTimer(null);
         }
 
-        globalState.setValues({
+        setInternalModifiers({
             capsLock: event.getModifierState("CapsLock"),
             shift: event.shiftKey,
             ctrl: event.ctrlKey,
             alt: event.altKey,
             meta: event.metaKey,
-            pressedKeys: currentPressedKeys,
         });
+        scheduleStateFlush();
 
         // 키 릴리즈 이벤트 처리 및 홀드 타이머 정리
         const comboKey = createComboKey({
@@ -250,7 +287,11 @@ export function createKeyUpHandler() {
 
         // onRelease 콜백 실행
         const comboData = globalKeyComboCallbacks.get(comboKey);
-        if (comboData && comboData.options.onRelease) {
+        if (
+            comboData &&
+            comboData.options.onRelease &&
+            (!isEditable || comboData.options.allowInEditable)
+        ) {
             comboData.options.onRelease();
         }
     };
@@ -261,27 +302,27 @@ export function createKeyUpHandler() {
  */
 export function createResetHandler() {
     return () => {
-        if (!globalState) return;
-        globalState.setValues({
+        setInternalModifierKeys({
             shift: false,
             ctrl: false,
             alt: false,
             meta: false,
-            pressedKeys: new Set<string>(),
         });
+        clearPressedKeys();
+        scheduleStateFlush();
     };
 }
 
 export function createVisibilityChangeHandler() {
     return () => {
-        if (document.hidden && globalState) {
-            globalState.setValues({
-                shift: false,
-                ctrl: false,
-                alt: false,
-                meta: false,
-                pressedKeys: new Set<string>(),
-            });
-        }
+        if (!document.hidden) return;
+        setInternalModifierKeys({
+            shift: false,
+            ctrl: false,
+            alt: false,
+            meta: false,
+        });
+        clearPressedKeys();
+        scheduleStateFlush();
     };
 }

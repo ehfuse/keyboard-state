@@ -38,7 +38,7 @@
     },
     "homepage": "https://github.com/ehfuse/keyboard-state#readme",
     "peerDependencies": {
-        "@ehfuse/forma": "^3.0.0",
+        "@ehfuse/forma": "^3.1.0",
         "react": ">=16.8.0"
     },
     "devDependencies": {

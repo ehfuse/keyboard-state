@@ -27,22 +27,7 @@ import {
     createVisibilityChangeHandler,
 } from "./eventHandlers";
 
-/**
- * 키보드 상태를 구독하고 단축키를 등록하는 Hook
- *
- * 사용법:
- * 1. const keyboard = useKeyboardState(); // 상태만 구독
- * 2. useKeyboardState('ctrl+s', () => {}); // 단축키 등록
- * 3. useKeyboardState({ 'ctrl+s': callback }); // 여러 단축키 등록
- */
-export function useKeyboardState(
-    comboOrShortcuts?:
-        | KeyComboInput
-        | KeyboardShortcuts
-        | KeyboardShortcutItem[],
-    callback?: () => void,
-    options?: KeyComboOptions
-): KeyboardState | void {
+function useKeyboardCore() {
     const forma = useGlobalFormaState({
         stateId: "__keyboard_state__",
         initialValues: {
@@ -60,15 +45,6 @@ export function useKeyboardState(
     useEffect(() => {
         (window as any).__keyboardState__ = forma;
     }, [forma]);
-
-    // 상태 값들
-    const capsLock = forma.useValue("capsLock");
-    const shift = forma.useValue("shift");
-    const ctrl = forma.useValue("ctrl");
-    const alt = forma.useValue("alt");
-    const meta = forma.useValue("meta");
-    const pressedKeys = forma.useValue("pressedKeys");
-    const lastPressedKey = forma.useValue("lastPressedKey");
 
     // 전역 이벤트 리스너 등록
     useEffect(() => {
@@ -98,11 +74,48 @@ export function useKeyboardState(
             window.removeEventListener("focus", resetHandler);
             document.removeEventListener(
                 "visibilitychange",
-                visibilityChangeHandler
+                visibilityChangeHandler,
             );
             setGlobalEventListenersRegistered(false);
         };
     }, []);
+
+    return forma;
+}
+
+export function useKeyboardValue<T extends keyof KeyState>(
+    key: T,
+): KeyState[T] {
+    const forma = useKeyboardCore();
+    return forma.useValue(key as string) as KeyState[T];
+}
+
+/**
+ * 키보드 상태를 구독하고 단축키를 등록하는 Hook
+ *
+ * 사용법:
+ * 1. const keyboard = useKeyboardState(); // 상태만 구독
+ * 2. useKeyboardState('ctrl+s', () => {}); // 단축키 등록
+ * 3. useKeyboardState({ 'ctrl+s': callback }); // 여러 단축키 등록
+ */
+export function useKeyboardState(
+    comboOrShortcuts?:
+        | KeyComboInput
+        | KeyboardShortcuts
+        | KeyboardShortcutItem[],
+    callback?: () => void,
+    options?: KeyComboOptions,
+): KeyboardState | void {
+    const forma = useKeyboardCore();
+
+    // 상태 값들
+    const capsLock = forma.useValue("capsLock");
+    const shift = forma.useValue("shift");
+    const ctrl = forma.useValue("ctrl");
+    const alt = forma.useValue("alt");
+    const meta = forma.useValue("meta");
+    const pressedKeys = forma.useValue("pressedKeys");
+    const lastPressedKey = forma.useValue("lastPressedKey");
 
     // 콜백을 ref에 저장하여 안정적인 참조 유지
     const callbackRef = useRef(callback);
@@ -119,13 +132,13 @@ export function useKeyboardState(
             if (Array.isArray(key)) {
                 // 배열인 경우: 모든 키가 눌려있는지 확인 (AND 조건)
                 return key.every((k) =>
-                    pressedKeys.has(normalizeKey(String(k)))
+                    pressedKeys.has(normalizeKey(String(k))),
                 );
             }
             // 단일 키인 경우
             return pressedKeys.has(normalizeKey(String(key)));
         },
-        [pressedKeys]
+        [pressedKeys],
     );
 
     // 상태 객체 생성 (항상 생성)
@@ -187,8 +200,8 @@ export function useKeyboardState(
                         watchKey(
                             shortcut.key,
                             shortcut.callback,
-                            shortcut.options
-                        )
+                            shortcut.options,
+                        ),
                     );
                 }
             });
@@ -205,8 +218,8 @@ export function useKeyboardState(
                 watchKey(
                     comboOrShortcuts as KeyComboInput,
                     stableCallback,
-                    options
-                )
+                    options,
+                ),
             );
         }
 

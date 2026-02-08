@@ -8,7 +8,11 @@
  */
 
 // Main hook exports
-export { useKeyboardState, default } from "./useKeyboardState";
+export {
+    useKeyboardState,
+    useKeyboardValue,
+    default,
+} from "./useKeyboardState";
 export { useKeyboardRecording } from "./useKeyboardRecording";
 
 // Type exports

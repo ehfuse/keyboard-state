@@ -6,27 +6,27 @@ React 키보드 상태 관리 및 단축키 라이브러리
 
 ## Features
 
--   🎯 **Global Keyboard State Management** - Manage key inputs and modifier key states globally
--   ⚡ **Performance Optimized** - Only necessary components re-render
--   🔥 **Shortcut Registration** - Easy shortcut registration and management
--   🎮 **Hold & Release** - Key hold detection and release event support
--   📝 **Key Sequences** - Vim-style sequential key input support (`g i`, `g h`)
--   🎬 **Key Recording** - Record and playback key inputs
--   🌐 **Global State** - Share global state without Provider
--   📦 **TypeScript Support** - Full type safety
--   🪶 **Lightweight** - Minimal bundle size
+- 🎯 **Global Keyboard State Management** - Manage key inputs and modifier key states globally
+- ⚡ **Performance Optimized** - Only necessary components re-render
+- 🔥 **Shortcut Registration** - Easy shortcut registration and management
+- 🎮 **Hold & Release** - Key hold detection and release event support
+- 📝 **Key Sequences** - Vim-style sequential key input support (`g i`, `g h`)
+- 🎬 **Key Recording** - Record and playback key inputs
+- 🌐 **Global State** - Share global state without Provider
+- 📦 **TypeScript Support** - Full type safety
+- 🪶 **Lightweight** - Minimal bundle size
 
 ## 특징
 
--   🎯 **전역 키보드 상태 관리** - 키 입력, 수정자 키 상태를 전역으로 관리
--   ⚡ **성능 최적화** - 필요한 컴포넌트만 리렌더링
--   🔥 **단축키 등록** - 간편한 단축키 등록 및 관리
--   🎮 **Hold & Release** - 키 홀드 감지 및 릴리즈 이벤트 지원
--   📝 **키 시퀀스** - Vim 스타일 연속 키 입력 지원 (`g i`, `g h`)
--   🎬 **키 녹화** - 키 입력 녹화 및 재생
--   🌐 **글로벌 상태** - Provider 없이 전역 상태 공유
--   📦 **TypeScript 지원** - 완전한 타입 안전성
--   🪶 **경량** - 최소한의 번들 사이즈
+- 🎯 **전역 키보드 상태 관리** - 키 입력, 수정자 키 상태를 전역으로 관리
+- ⚡ **성능 최적화** - 필요한 컴포넌트만 리렌더링
+- 🔥 **단축키 등록** - 간편한 단축키 등록 및 관리
+- 🎮 **Hold & Release** - 키 홀드 감지 및 릴리즈 이벤트 지원
+- 📝 **키 시퀀스** - Vim 스타일 연속 키 입력 지원 (`g i`, `g h`)
+- 🎬 **키 녹화** - 키 입력 녹화 및 재생
+- 🌐 **글로벌 상태** - Provider 없이 전역 상태 공유
+- 📦 **TypeScript 지원** - 완전한 타입 안전성
+- 🪶 **경량** - 최소한의 번들 사이즈
 
 ## 설치
 
@@ -185,7 +185,8 @@ interface KeyboardState {
 
 ```tsx
 interface KeyComboOptions {
-    preventDefault?: boolean; // Prevent default behavior (default: true)
+    preventDefault?: boolean; // Prevent default behavior (default: false)
+    allowInEditable?: boolean; // Allow in input/textarea/contenteditable (default: false)
     enabled?: boolean; // Enable/disable shortcut (default: true)
     classes?: string[]; // Only work within specific classes
     holdDuration?: number; // Hold duration in milliseconds
@@ -196,9 +197,9 @@ interface KeyComboOptions {
 
 ## 문서 | Documentation
 
--   📚 [시작하기](./docs/ko/getting-started.md)
--   📖 [API 레퍼런스](./docs/ko/api.md)
--   💡 [예제 모음](./docs/ko/examples.md)
+- 📚 [시작하기](./docs/ko/getting-started.md)
+- 📖 [API 레퍼런스](./docs/ko/api.md)
+- 💡 [예제 모음](./docs/ko/examples.md)
 
 ## 라이선스 | License
 
@@ -206,4 +207,4 @@ MIT © [ehfuse](https://github.com/ehfuse)
 
 ## 관련 프로젝트 | Related Projects
 
--   [@ehfuse/forma](https://github.com/ehfuse/forma) - React 상태 관리 라이브러리
+- [@ehfuse/forma](https://github.com/ehfuse/forma) - React 상태 관리 라이브러리

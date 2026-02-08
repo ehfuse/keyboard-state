@@ -2,17 +2,17 @@
 
 ## 목차
 
--   [Hooks](#hooks)
-    -   [useKeyboardState](#usekeyboardstate)
-    -   [useKeyboardRecording](#usekeyboardrecording)
--   [Types](#types)
-    -   [KeyboardState](#keyboardstate)
-    -   [KeyComboOptions](#keycombooptions)
-    -   [Keys](#keys)
-    -   [RecordedMacro](#recordedmacro)
--   [Utilities](#utilities)
-    -   [KeyComboInput](#keycomboinput)
-    -   [KeyType](#keytype)
+- [Hooks](#hooks)
+    - [useKeyboardState](#usekeyboardstate)
+    - [useKeyboardRecording](#usekeyboardrecording)
+- [Types](#types)
+    - [KeyboardState](#keyboardstate)
+    - [KeyComboOptions](#keycombooptions)
+    - [Keys](#keys)
+    - [RecordedMacro](#recordedmacro)
+- [Utilities](#utilities)
+    - [KeyComboInput](#keycomboinput)
+    - [KeyType](#keytype)
 
 ---
 
@@ -345,7 +345,7 @@ interface KeyboardState {
     watchKey: (
         key: KeyComboInput,
         callback: () => void,
-        options?: KeyComboOptions
+        options?: KeyComboOptions,
     ) => () => void;
     isKeyPressed: (key: KeyType | KeyType[]) => boolean;
 }
@@ -376,9 +376,9 @@ const cleanup = keyboard.watchKey(key, callback, options?);
 
 **매개변수**:
 
--   `key`: 감시할 키 조합
--   `callback`: 키가 눌렸을 때 실행할 함수
--   `options`: [`KeyComboOptions`](#keycombooptions) (선택)
+- `key`: 감시할 키 조합
+- `callback`: 키가 눌렸을 때 실행할 함수
+- `options`: [`KeyComboOptions`](#keycombooptions) (선택)
 
 **반환값**: 정리 함수 (`() => void`)
 
@@ -415,7 +415,7 @@ const isPressed = keyboard.isKeyPressed(key);
 
 **매개변수**:
 
--   `key`: 확인할 키 또는 키 배열
+- `key`: 확인할 키 또는 키 배열
 
 **반환값**: `boolean`
 
@@ -443,6 +443,7 @@ const isArrowPressed = keyboard.isKeyPressed([
 ```tsx
 interface KeyComboOptions {
     preventDefault?: boolean;
+    allowInEditable?: boolean;
     enabled?: boolean;
     classes?: string[];
     holdDuration?: number;
@@ -453,14 +454,15 @@ interface KeyComboOptions {
 
 #### 속성
 
-| 속성             | 타입         | 기본값      | 설명                                  |
-| ---------------- | ------------ | ----------- | ------------------------------------- |
-| `preventDefault` | `boolean`    | `true`      | 브라우저 기본 동작을 방지할지 여부    |
-| `enabled`        | `boolean`    | `true`      | 단축키 활성화 여부 (동적 제어 가능)   |
-| `classes`        | `string[]`   | `undefined` | 특정 클래스를 가진 요소 내에서만 동작 |
-| `holdDuration`   | `number`     | `undefined` | 키를 길게 누를 시간 (밀리초)          |
-| `onHold`         | `() => void` | `undefined` | `holdDuration`만큼 누르면 실행        |
-| `onRelease`      | `() => void` | `undefined` | 키를 뗐을 때 실행                     |
+| 속성              | 타입         | 기본값      | 설명                                   |
+| ----------------- | ------------ | ----------- | -------------------------------------- |
+| `preventDefault`  | `boolean`    | `false`     | 브라우저 기본 동작을 방지할지 여부     |
+| `allowInEditable` | `boolean`    | `false`     | 입력 요소에서도 단축키를 허용할지 여부 |
+| `enabled`         | `boolean`    | `true`      | 단축키 활성화 여부 (동적 제어 가능)    |
+| `classes`         | `string[]`   | `undefined` | 특정 클래스를 가진 요소 내에서만 동작  |
+| `holdDuration`    | `number`     | `undefined` | 키를 길게 누를 시간 (밀리초)           |
+| `onHold`          | `() => void` | `undefined` | `holdDuration`만큼 누르면 실행         |
+| `onRelease`       | `() => void` | `undefined` | 키를 뗐을 때 실행                      |
 
 #### 예제
 
@@ -487,6 +489,15 @@ useKeyboardState("ctrl+s", saveFn, {
 ```tsx
 useKeyboardState("escape", closeFn, {
     classes: ["modal", "dialog"], // modal 또는 dialog 클래스 내에서만
+});
+```
+
+**입력 요소에서도 허용**:
+
+```tsx
+useKeyboardState("ctrl+e", focusEditor, {
+    allowInEditable: true,
+    preventDefault: true,
 });
 ```
 
@@ -698,5 +709,5 @@ keyboard.isKeyPressed(Keys.Escape); // 자동완성 지원
 
 ## 관련 문서
 
--   [시작하기](./getting-started.md)
--   [예제 모음](./examples.md)
+- [시작하기](./getting-started.md)
+- [예제 모음](./examples.md)

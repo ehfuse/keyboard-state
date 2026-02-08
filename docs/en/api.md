@@ -2,17 +2,17 @@
 
 ## Table of Contents
 
--   [Hooks](#hooks)
-    -   [useKeyboardState](#usekeyboardstate)
-    -   [useKeyboardRecording](#usekeyboardrecording)
--   [Types](#types)
-    -   [KeyboardState](#keyboardstate)
-    -   [KeyComboOptions](#keycombooptions)
-    -   [Keys](#keys)
-    -   [RecordedMacro](#recordedmacro)
--   [Utilities](#utilities)
-    -   [KeyComboInput](#keycomboinput)
-    -   [KeyType](#keytype)
+- [Hooks](#hooks)
+    - [useKeyboardState](#usekeyboardstate)
+    - [useKeyboardRecording](#usekeyboardrecording)
+- [Types](#types)
+    - [KeyboardState](#keyboardstate)
+    - [KeyComboOptions](#keycombooptions)
+    - [Keys](#keys)
+    - [RecordedMacro](#recordedmacro)
+- [Utilities](#utilities)
+    - [KeyComboInput](#keycomboinput)
+    - [KeyType](#keytype)
 
 ---
 
@@ -344,7 +344,7 @@ interface KeyboardState {
     watchKey: (
         key: KeyComboInput,
         callback: () => void,
-        options?: KeyComboOptions
+        options?: KeyComboOptions,
     ) => () => void;
     isKeyPressed: (key: KeyType | KeyType[]) => boolean;
 }
@@ -375,9 +375,9 @@ const cleanup = keyboard.watchKey(key, callback, options?);
 
 **Parameters**:
 
--   `key`: Key combination to watch
--   `callback`: Function to execute when key is pressed
--   `options`: [`KeyComboOptions`](#keycombooptions) (optional)
+- `key`: Key combination to watch
+- `callback`: Function to execute when key is pressed
+- `options`: [`KeyComboOptions`](#keycombooptions) (optional)
 
 **Returns**: Cleanup function (`() => void`)
 
@@ -414,7 +414,7 @@ const isPressed = keyboard.isKeyPressed(key);
 
 **Parameters**:
 
--   `key`: Key or array of keys to check
+- `key`: Key or array of keys to check
 
 **Returns**: `boolean`
 
@@ -442,6 +442,7 @@ Options to control shortcut behavior.
 ```tsx
 interface KeyComboOptions {
     preventDefault?: boolean;
+    allowInEditable?: boolean;
     enabled?: boolean;
     classes?: string[];
     holdDuration?: number;
@@ -452,14 +453,15 @@ interface KeyComboOptions {
 
 #### Properties
 
-| Property         | Type         | Default     | Description                                  |
-| ---------------- | ------------ | ----------- | -------------------------------------------- |
-| `preventDefault` | `boolean`    | `true`      | Prevent browser default behavior             |
-| `enabled`        | `boolean`    | `true`      | Enable/disable shortcut (dynamic control)    |
-| `classes`        | `string[]`   | `undefined` | Only work inside elements with these classes |
-| `holdDuration`   | `number`     | `undefined` | Duration to hold key (milliseconds)          |
-| `onHold`         | `() => void` | `undefined` | Execute when held for holdDuration           |
-| `onRelease`      | `() => void` | `undefined` | Execute when key is released                 |
+| Property          | Type         | Default     | Description                                  |
+| ----------------- | ------------ | ----------- | -------------------------------------------- |
+| `preventDefault`  | `boolean`    | `false`     | Prevent browser default behavior             |
+| `allowInEditable` | `boolean`    | `false`     | Allow shortcuts inside editable elements     |
+| `enabled`         | `boolean`    | `true`      | Enable/disable shortcut (dynamic control)    |
+| `classes`         | `string[]`   | `undefined` | Only work inside elements with these classes |
+| `holdDuration`    | `number`     | `undefined` | Duration to hold key (milliseconds)          |
+| `onHold`          | `() => void` | `undefined` | Execute when held for holdDuration           |
+| `onRelease`       | `() => void` | `undefined` | Execute when key is released                 |
 
 #### Examples
 
@@ -486,6 +488,15 @@ useKeyboardState("ctrl+s", saveFn, {
 ```tsx
 useKeyboardState("escape", closeFn, {
     classes: ["modal", "dialog"], // Only inside .modal or .dialog
+});
+```
+
+**Allow in Editable Elements**:
+
+```tsx
+useKeyboardState("ctrl+e", focusEditor, {
+    allowInEditable: true,
+    preventDefault: true,
 });
 ```
 
@@ -697,5 +708,5 @@ keyboard.isKeyPressed(Keys.Escape); // Autocompletion support
 
 ## Related Documentation
 
--   [Getting Started](./getting-started.md)
--   [Examples](./examples.md)
+- [Getting Started](./getting-started.md)
+- [Examples](./examples.md)

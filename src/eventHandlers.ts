@@ -236,6 +236,26 @@ function handleKeySequence(
         }
     }
 
+    // 매칭 실패 — 등록된 시퀀스의 접두사로 이어질 수 있는 부분만 남긴다.
+    // 이 정리가 없으면 직전에 친 아무 글자가 시퀀스에 남아 다음 시퀀스를 깨뜨린다
+    // (예: "r" 을 친 직후 "g","l" → "r g l" 이라 "g l" 에 안 걸린다).
+    const registeredSequences = [...globalKeyComboCallbacks.keys()].filter((registered) =>
+        registered.includes(" "),
+    );
+    if (registeredSequences.length > 0) {
+        let trimmed: string[] = [];
+        // 가장 긴 접미사부터 훑어 "아직 이어질 수 있는" 최장 조각을 남긴다.
+        for (let start = 0; start < newSequence.length; start += 1) {
+            const candidate = newSequence.slice(start);
+            const joined = candidate.join(" ");
+            if (registeredSequences.some((registered) => registered.startsWith(joined))) {
+                trimmed = candidate;
+                break;
+            }
+        }
+        setGlobalKeySequence(trimmed);
+    }
+
     // 1초 후 시퀀스 초기화
     const timerId = window.setTimeout(() => {
         setGlobalKeySequence([]);
